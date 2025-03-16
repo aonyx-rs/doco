@@ -1,0 +1,78 @@
+---
+name: CI
+
+"on":
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  targets:
+    name: Enumerate Earthly targets
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.export-targets.outputs.targets }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install earthly
+        uses: earthly/actions-setup@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          version: 0.8
+
+      - name: Export targets
+        id: export-targets
+        run: echo "targets=$(earthly ls | jq -cnR '[inputs | sub("\\+"; "")]')" >> "$GITHUB_OUTPUT"
+
+  checks:
+    name: Check
+    runs-on: ubuntu-latest
+
+    permissions:
+      packages: write
+      contents: read
+
+    needs: targets
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.targets.outputs.matrix) }}
+        # Exclude intermediary targets that are not meant to be run directly
+        exclude:
+          - target: "all"
+          - target: "base"
+          - target: "example-axum-container"
+          - target: "example-axum-docker"
+          - target: "example-leptos-container"
+          - target: "example-leptos-docker"
+          - target: "node-container"
+          - target: "rust-build"
+          - target: "rust-container"
+          - target: "rust-sources"
+          - target: "rust-tarpaulin-container"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install earthly
+        uses: earthly/actions-setup@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          version: 0.8
+
+      - name: Run check with Earthly
+        env:
+          EARTHLY_TOKEN: ${{ secrets.EARTHLY_TOKEN }}
+        run: earthly --allow-privileged --ci --push --remote-cache=ghcr.io/otterbuild/doco-earthly-cache:${{ matrix.target }} +${{ matrix.target }}
