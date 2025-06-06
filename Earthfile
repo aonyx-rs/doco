@@ -76,6 +76,9 @@ example-axum-container:
 example-axum-docker:
     FROM DOCKERFILE -f examples/axum-postgres/Dockerfile .
 
+    # Cache the container
+    SAVE IMAGE --cache-hint
+
 example-axum-format:
     FROM +example-axum-container
 
@@ -107,6 +110,9 @@ example-leptos-container:
 
 example-leptos-docker:
     FROM DOCKERFILE -f examples/leptos/Dockerfile .
+
+    # Cache the container
+    SAVE IMAGE --cache-hint
 
 example-leptos-format:
     FROM +example-leptos-container
