@@ -2,7 +2,7 @@ VERSION 0.8
 
 IMPORT github.com/earthly/lib/rust AS rust
 
-FROM rust:1.85.0-slim
+FROM rust:1.90.0-slim
 WORKDIR /doco
 
 all:
